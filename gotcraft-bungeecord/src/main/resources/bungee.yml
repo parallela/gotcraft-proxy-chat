@@ -1,0 +1,6 @@
+name: GotCraftProxyChat
+version: '${project.version}'
+main: me.lubomirstankov.gotcraftproxychat.bungeecord.GotCraftBungee
+author: lubomirstankov
+description: Cross-server chat plugin for BungeeCord networks
+

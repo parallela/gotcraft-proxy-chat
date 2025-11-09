@@ -1,0 +1,27 @@
+# GotCraftProxyChat Configuration
+# This configuration file controls cross-server chat behavior
+
+chat:
+  # Enable/disable cross-server chat packet forwarding
+  enabled: true
+
+  # Server name to identify this server
+  # This should match your BungeeCord server name (e.g., "survival", "skyblock", "lobby")
+  server-name: "survival"
+
+  # Add server prefix with icon before chat messages
+  # Uses MiniMessage formatting - supports colors, gradients, hover, click events
+  # Set to empty string "" to disable
+  # Examples:
+  #   "⛏ <gradient:#00ff00:#00aa00>SURVIVAL</gradient>"
+  #   "🏝 <color:#00ffff>SKYBLOCK</color>"
+  #   "🎮 <color:#ff0000>MINIGAMES</color>"
+  #   "<hover:show_text:'Click to teleport!'><click:run_command:/server survival>⛏ SURVIVAL</click></hover>"
+  server-prefix: "⛏ <gradient:#00ff00:#00aa00>SURVIVAL</gradient> "
+
+# IMPORTANT: This plugin uses ProtocolLib to intercept and forward chat packets
+# All chat formatting, colors, hover events, and click events are preserved perfectly
+# The server-prefix is prepended to messages from this server when forwarded to other servers
+# No other message modification is performed - packets are forwarded as-is
+
+

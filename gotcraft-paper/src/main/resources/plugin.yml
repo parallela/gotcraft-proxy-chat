@@ -1,0 +1,24 @@
+name: GotCraftProxyChat
+version: '${project.version}'
+main: me.lubomirstankov.gotcraftproxychat.paper.GotCraftPaper
+api-version: '1.21'
+author: lubomirstankov
+description: Cross-server chat plugin for BungeeCord networks
+website: https://github.com/lubomirstankov
+
+
+softdepend:
+  - LuckPerms
+
+commands:
+  gcreload:
+    description: Reload the GotCraftProxyChat configuration
+    usage: /gcreload
+    permission: gotcraftproxychat.reload
+    aliases: [gcrld, gotcraftreload]
+
+permissions:
+  gotcraftproxychat.reload:
+    description: Allows reloading the plugin configuration
+    default: op
+
