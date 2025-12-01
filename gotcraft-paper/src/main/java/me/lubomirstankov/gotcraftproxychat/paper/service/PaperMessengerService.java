@@ -5,10 +5,12 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
 import me.lubomirstankov.gotcraftproxychat.common.model.ChatPacket;
 import me.lubomirstankov.gotcraftproxychat.paper.GotCraftPaper;
-import me.lubomirstankov.gotcraftproxychat.paper.listener.PlayerChatEventListener;
+import me.lubomirstankov.gotcraftproxychat.paper.listener.ProtocolChatListener;
+import me.lubomirstankov.gotcraftproxychat.paper.util.PlaceholderSupport;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
@@ -70,10 +72,12 @@ public class PaperMessengerService implements PluginMessageListener {
             ByteArrayInputStream bis = new ByteArrayInputStream(packetData);
             DataInputStream dis = new DataInputStream(bis);
 
+            // packetData was written as: int(typeHash), UTF(senderUuid), UTF(json)
             dis.readInt();
             String senderUuidStr = dis.readUTF();
 
-            if (senderUuidStr.trim().isEmpty()) {
+            if (senderUuidStr == null || senderUuidStr.trim().isEmpty()) {
+                plugin.getLogger().warning("Skipping packet with missing sender UUID");
                 return;
             }
 
@@ -81,32 +85,80 @@ public class PaperMessengerService implements PluginMessageListener {
             try {
                 senderUuid = UUID.fromString(senderUuidStr);
             } catch (IllegalArgumentException e) {
+                plugin.getLogger().warning("Skipping packet with invalid sender UUID");
                 return;
             }
 
             String jsonContent = dis.readUTF();
-            if (jsonContent.trim().isEmpty()) {
+            if (jsonContent == null || jsonContent.trim().isEmpty()) {
+                plugin.getLogger().warning("Skipping packet with empty JSON content");
                 return;
             }
 
-            Component originalMessage;
+            // Safely deserialize JSON to an Adventure Component using Gson only.
+            Component originalMessage = safeDeserializeJson(jsonContent);
+            if (originalMessage == null) {
+                plugin.getLogger().warning("Skipping packet - failed to deserialize JSON to Component");
+                return;
+            }
+
+            // Apply placeholder support to server prefix (if present)
+            String rawServerPrefix = chatPacket.getServerPrefix();
+            Component finalMessage = safeCombinePrefixAndJson(rawServerPrefix, originalMessage, senderUuid);
+
+            // Send to players using ProtocolLib. Wrap to JSON using Gson serializer only.
+            safeSendToPlayers(finalMessage);
+
+        } catch (Exception e) {
+            plugin.getLogger().severe("Failed to broadcast chat packet: " + e.getMessage());
+        }
+    }
+
+    // Safely deserialize JSON string into an Adventure Component using GsonComponentSerializer only.
+    // Returns null on fatal failure (caller will handle skipping).
+    private Component safeDeserializeJson(String json) {
+        if (json == null) return null;
+        try {
+            return gsonSerializer.deserialize(json);
+        } catch (Exception e) {
+            // Malformed JSON fallback: use plain text to avoid feeding JSON into MiniMessage
             try {
-                originalMessage = gsonSerializer.deserialize(jsonContent);
-            } catch (Exception e) {
-                return;
+                return Component.text(json);
+            } catch (Exception ex) {
+                return null;
             }
+        }
+    }
 
-            Component finalMessage;
-            String serverPrefix = chatPacket.getServerPrefix();
+    // Combine server prefix (MiniMessage format) with original JSON Component safely.
+    // Important: NEVER feed the original JSON into MiniMessage. MiniMessage is used only for the prefix.
+    private Component safeCombinePrefixAndJson(String rawServerPrefix, Component originalMessage, UUID senderUuid) {
+        if (rawServerPrefix == null || rawServerPrefix.trim().isEmpty()) {
+            return originalMessage;
+        }
 
-            if (serverPrefix != null && !serverPrefix.isEmpty()) {
-                Component prefixComponent = miniMessage.deserialize(serverPrefix);
-                finalMessage = prefixComponent.append(originalMessage);
-            } else {
-                finalMessage = originalMessage;
-            }
+        // Apply PlaceholderAPI to the prefix if available
+        OfflinePlayer offline = plugin.getServer().getOfflinePlayer(senderUuid);
+        String applied = PlaceholderSupport.apply(rawServerPrefix, offline);
 
-            String modifiedJson = gsonSerializer.serialize(finalMessage);
+        Component prefixComponent;
+        try {
+            prefixComponent = miniMessage.deserialize(applied == null ? "" : applied);
+        } catch (Exception e) {
+            // If MiniMessage fails parsing the prefix, fall back to plain text prefix
+            prefixComponent = Component.text(applied == null ? "" : applied);
+        }
+
+        // Append a space between prefix and message if not already present
+        Component spacing = Component.text(" ");
+        return prefixComponent.append(spacing).append(originalMessage);
+    }
+
+    // Safely serialize Component using Gson and send SYSTEM_CHAT packets to all online players.
+    // Uses ProtocolChatListener broadcasting flag to avoid re-interception.
+    private void safeSendToPlayers(Component component) {
+        try {
+            String modifiedJson = gsonSerializer.serialize(component);
 
             PacketContainer packet = new PacketContainer(PacketType.Play.Server.SYSTEM_CHAT);
             com.comphenix.protocol.wrappers.WrappedChatComponent wrappedComponent =
@@ -114,23 +166,22 @@ public class PaperMessengerService implements PluginMessageListener {
             packet.getChatComponents().write(0, wrappedComponent);
             packet.getBooleans().write(0, false);
 
-            PlayerChatEventListener.startBroadcasting();
-
+            // Prevent ProtocolChatListener from re-intercepting these injected packets
+            ProtocolChatListener.startBroadcasting();
             try {
                 for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {
                     try {
                         ProtocolLibrary.getProtocolManager().sendServerPacket(onlinePlayer, packet);
                     } catch (Exception e) {
-                        plugin.getLogger().warning("Failed to send packet to " + onlinePlayer.getName());
+                        plugin.getLogger().warning("Failed to send packet to " + onlinePlayer.getName() + ": " + e.getMessage());
                     }
                 }
             } finally {
-                PlayerChatEventListener.endBroadcasting();
+                ProtocolChatListener.endBroadcasting();
             }
 
         } catch (Exception e) {
-            plugin.getLogger().severe("Failed to broadcast chat packet: " + e.getMessage());
+            plugin.getLogger().severe("Failed to send chat Component to players: " + e.getMessage());
         }
     }
 }
-

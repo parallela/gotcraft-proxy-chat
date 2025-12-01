@@ -5,6 +5,7 @@ import me.lubomirstankov.gotcraftproxychat.common.util.DIContainer;
 import me.lubomirstankov.gotcraftproxychat.paper.command.ReloadConfigCommand;
 import me.lubomirstankov.gotcraftproxychat.paper.listener.PlayerChatEventListener;
 import me.lubomirstankov.gotcraftproxychat.paper.service.PaperMessengerService;
+import me.lubomirstankov.gotcraftproxychat.paper.util.PlaceholderSupport;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.nio.file.Path;
@@ -34,6 +35,10 @@ public final class GotCraftPaper extends JavaPlugin {
 
         getLogger().info("GotCraftProxyChat-Paper has been enabled!");
         getLogger().info("Server: " + configManager.getString("chat.server-name", getServer().getName()));
+
+        if (PlaceholderSupport.isAvailable()) {
+            getLogger().info("PlaceholderAPI found - placeholders in server-prefix will be resolved");
+        }
     }
 
     @Override

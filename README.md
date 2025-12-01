@@ -7,6 +7,7 @@ A production-ready cross-server chat plugin for BungeeCord networks that synchro
 - ✅ **Cross-Server Chat**: Messages sent on one server appear on all connected servers
 - 🏷️ **Server Tags**: Customizable prefixes for each server (e.g., [SURVIVAL], [SKYBLOCK])
 - 👑 **LuckPerms Integration**: Automatic rank prefix fetching and display
+- 📊 **PlaceholderAPI Support**: Use placeholders in server prefixes (optional)
 - 🔒 **Origin Server Exclusion**: Messages are not echoed back to the origin server
 - ⚙️ **Fully Configurable**: All aspects configurable via YAML
 - 🔄 **Hot Reload**: Reload configuration without restarting servers
@@ -30,6 +31,7 @@ GotCraftProxyChat/
 - **BungeeCord** (or compatible proxy like Waterfall)
 - **Paper 1.21.1+** (or compatible fork)
 - **LuckPerms** (optional, for rank prefixes)
+- **PlaceholderAPI** (optional, for placeholders in server prefixes)
 
 ## Installation
 
@@ -43,7 +45,7 @@ GotCraftProxyChat/
 
 3. **Install on Paper servers**:
    - Copy `gotcraft-paper/target/GotCraftProxyChat-Paper.jar` to each Paper server's `plugins/` folder
-   - If using LuckPerms, ensure it's installed on each Paper server
+   - Optionally install PlaceholderAPI for placeholder support in server prefixes
 
 4. **Configure each Paper server**:
    - Edit `plugins/GotCraftProxyChat/config.yml` on each server
@@ -60,33 +62,19 @@ chat:
   # Enable/disable cross-server chat
   enabled: true
   
-  # Chat message format
-  # Placeholders:
-  #   {serverPrefix} - The server prefix (from server-prefixes below)
-  #   {rankPrefix} - The player's LuckPerms rank prefix
-  #   {player} - The player's name
-  #   {message} - The chat message
-  format: "{serverPrefix} {rankPrefix}{player}&f: {message}"
-  
   # Server name (must match BungeeCord config)
   server-name: "survival"
   
-  # Use player display name instead of username
-  # Display names support nicknames, colors, and formatting
-  use-display-name: true
-  
-  # Server prefixes
-  server-prefixes:
-    survival: "&a[SURVIVAL]"
-    skyblock: "&b[SKYBLOCK]"
-    lobby: "&e[LOBBY]"
-    creative: "&d[CREATIVE]"
-    minigames: "&c[MINIGAMES]"
-  
-  # LuckPerms integration
-  luckperms:
-    use-prefix: true
+  # Server prefix displayed before chat messages
+  # Supports MiniMessage formatting and PlaceholderAPI placeholders
+  # Examples:
+  #   "⛏ <gradient:#00ff00:#00aa00>SURVIVAL</gradient> "
+  #   "[%player_world%] "  (requires PlaceholderAPI)
+  #   "⛏ %server_name% "   (requires PlaceholderAPI)
+  server-prefix: "⛏ <gradient:#00ff00:#00aa00>SURVIVAL</gradient> "
 ```
+
+**Note**: PlaceholderAPI placeholders in `server-prefix` are resolved using the context of the player who sent the message.
 
 ## Commands
 
